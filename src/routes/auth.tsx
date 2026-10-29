@@ -399,7 +399,7 @@ function ForgotPasswordForm({
   busy: boolean;
   onSubmit: (values: ForgotPasswordValues) => void;
   error: string | null;
-  onValidationError: (message: string) => void;
+  onValidationError: (message: string | null) => void;
 }) {
   const [email, setEmail] = useState("");
 
