@@ -214,7 +214,12 @@ function AuthPage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   Enter your account email and we'll send you a reset link.
                 </p>
-                <ForgotPasswordForm busy={busy} onSubmit={handleForgot} error={error} />
+                <ForgotPasswordForm
+                  busy={busy}
+                  onSubmit={handleForgot}
+                  error={error}
+                  onValidationError={setError}
+                />
                 <div className="mt-4 text-right text-xs">
                   <button
                     type="button"
