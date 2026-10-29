@@ -413,7 +413,7 @@ function ForgotPasswordForm({
           onValidationError(parsed.error.issues[0].message);
           return;
         }
-        onValidationError("");
+        onValidationError(null);
         onSubmit(parsed.data);
       }}
     >
@@ -434,8 +434,4 @@ function ForgotPasswordForm({
       </Button>
     </form>
   );
-}
-
-function setError(message: string) {
-  console.warn(message);
 }
