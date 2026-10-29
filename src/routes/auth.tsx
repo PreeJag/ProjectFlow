@@ -394,10 +394,12 @@ function ForgotPasswordForm({
   busy,
   onSubmit,
   error,
+  onValidationError,
 }: {
   busy: boolean;
   onSubmit: (values: ForgotPasswordValues) => void;
   error: string | null;
+  onValidationError: (message: string) => void;
 }) {
   const [email, setEmail] = useState("");
 
@@ -408,10 +410,10 @@ function ForgotPasswordForm({
         event.preventDefault();
         const parsed = forgotPasswordSchema.safeParse({ email });
         if (!parsed.success) {
-          setError(parsed.error.issues[0].message);
+          onValidationError(parsed.error.issues[0].message);
           return;
         }
-        setError(null);
+        onValidationError("");
         onSubmit(parsed.data);
       }}
     >
