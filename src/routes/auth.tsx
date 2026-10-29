@@ -18,6 +18,13 @@ import {
 type Mode = "signin" | "signup" | "forgot";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    mode:
+      typeof search["mode"] === "string" &&
+      ["signin", "signup", "forgot"].includes(search["mode"])
+        ? (search["mode"] as Mode)
+        : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Sign in — ProjectFlow" },
@@ -39,13 +46,8 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("mode") === "signup") return "signup";
-    }
-    return "signin";
-  });
+  const search = Route.useSearch();
+  const [mode, setMode] = useState<Mode>(search.mode ?? "signin");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signupNotice, setSignupNotice] = useState<string | null>(null);
