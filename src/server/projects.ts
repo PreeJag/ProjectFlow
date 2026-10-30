@@ -55,13 +55,9 @@ export type DashboardData = {
   myTasks: TaskSummary[];
 };
 
-type SupabaseClient = Parameters<Parameters<typeof requireSupabaseAuth>[0]["server"]>[0]["next"] extends (
-  opts: { context: infer C },
-) => unknown
-  ? C extends { supabase: infer S }
-    ? S
-    : never
-  : never;
+type SupabaseClient = import("@supabase/supabase-js").SupabaseClient<
+  import("@/integrations/supabase/types").Database
+>;
 
 /** Shared loader for the project list with task and member counts (RLS-filtered). */
 async function fetchProjectSummaries(

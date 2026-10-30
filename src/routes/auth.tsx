@@ -18,7 +18,7 @@ import {
 type Mode = "signin" | "signup" | "forgot";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { mode?: Mode } => ({
     mode:
       typeof search["mode"] === "string" &&
       ["signin", "signup", "forgot"].includes(search["mode"])
@@ -348,7 +348,7 @@ function SignUpForm({
           onChange={(e) => setFullName(e.target.value)}
           placeholder="Jane Doe"
         />
-        <FieldError message={fieldErrors.fullName ?? null} />
+        <FieldError message={fieldErrors["fullName"] ?? null} />
       </div>
       <div>
         <Label htmlFor="signup-email">Email</Label>
@@ -360,7 +360,7 @@ function SignUpForm({
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
         />
-        <FieldError message={fieldErrors.email ?? null} />
+        <FieldError message={fieldErrors["email"] ?? null} />
       </div>
       <div>
         <Label htmlFor="signup-password">Password</Label>
@@ -371,7 +371,7 @@ function SignUpForm({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        <FieldError message={fieldErrors.password ?? null} />
+        <FieldError message={fieldErrors["password"] ?? null} />
       </div>
       <div>
         <Label htmlFor="signup-confirm">Confirm password</Label>
@@ -382,7 +382,7 @@ function SignUpForm({
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
         />
-        <FieldError message={fieldErrors.confirmPassword ?? null} />
+        <FieldError message={fieldErrors["confirmPassword"] ?? null} />
       </div>
       <FieldError message={error} />
       <Button type="submit" className="w-full" disabled={busy}>
@@ -412,7 +412,7 @@ function ForgotPasswordForm({
         event.preventDefault();
         const parsed = forgotPasswordSchema.safeParse({ email });
         if (!parsed.success) {
-          onValidationError(parsed.error.issues[0].message);
+          onValidationError(parsed.error.issues[0]!.message);
           return;
         }
         onValidationError(null);
