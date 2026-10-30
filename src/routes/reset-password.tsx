@@ -45,7 +45,7 @@ function ResetPasswordPage() {
     event.preventDefault();
     const parsed = resetPasswordSchema.safeParse({ password, confirmPassword });
     if (!parsed.success) {
-      setError(parsed.error.issues[0].message);
+      setError(parsed.error.issues[0]!.message);
       return;
     }
     setError(null);
