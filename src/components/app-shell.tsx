@@ -1,10 +1,19 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, LogOut, Menu, UserRound } from "lucide-react";
+import { FolderOpen, LayoutDashboard, LogOut, Menu, UserRound, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { removeToken } from "@/lib/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 type AppShellProps = {
   fullName: string;
@@ -17,19 +26,52 @@ export function AppShell({ fullName, email, roles, children }: AppShellProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const isAdmin = roles.includes("admin");
 
   async function handleSignOut() {
-    // Ordered teardown: stop in-flight queries, drop protected cache, clear
-    // the session, then replace history so Back cannot restore this route.
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    removeToken();
     navigate({ to: "/auth", replace: true });
   }
 
+  function confirmLeave() {
+    setShowLeaveDialog(true);
+  }
+
+  function handleLeaveConfirm() {
+    setShowLeaveDialog(false);
+    removeToken();
+    navigate({ to: "/auth", replace: true });
+  }
+
+  function handleLeaveCancel() {
+    setShowLeaveDialog(false);
+    window.history.pushState(null, "", window.location.href);
+  }
+
+  // Block back/forward navigation when logged in so the user cannot bounce
+  // between the login page and dashboard without signing out properly.
+  useEffect(() => {
+    const blockNavigation = () => {
+      confirmLeave();
+    };
+    window.addEventListener("popstate", blockNavigation);
+    window.history.pushState(null, "", window.location.href);
+
+    return () => {
+      window.removeEventListener("popstate", blockNavigation);
+    };
+  }, [navigate]);
+
   const navItems = [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/projects", label: "Projects", icon: FolderOpen },
+    ...(roles.includes("project_manager")
+      ? ([{ to: "/team", label: "Team", icon: Users }] as const)
+      : []),
+    ...(isAdmin ? ([{ to: "/admin", label: "Admin", icon: LayoutDashboard }] as const) : []),
     { to: "/profile", label: "Profile", icon: UserRound },
   ] as const;
 
@@ -63,8 +105,7 @@ export function AppShell({ fullName, email, roles, children }: AppShellProps) {
               to={item.to}
               className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               activeProps={{
-                className:
-                  "bg-sidebar-accent text-sidebar-accent-foreground font-semibold",
+                className: "bg-sidebar-accent text-sidebar-accent-foreground font-semibold",
               }}
             >
               <item.icon className="size-4" />
@@ -90,7 +131,13 @@ export function AppShell({ fullName, email, roles, children }: AppShellProps) {
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{fullName || "Unnamed user"}</p>
               <p className="truncate text-xs text-sidebar-foreground/70">
-                {isAdmin ? "Administrator" : "Standard user"}
+                {isAdmin
+                  ? "Administrator"
+                  : roles.includes("project_manager")
+                    ? "Project Manager"
+                    : roles.includes("team_member")
+                      ? "Team Member"
+                      : "Standard user"}
               </p>
             </div>
           </div>
@@ -126,6 +173,26 @@ export function AppShell({ fullName, email, roles, children }: AppShellProps) {
         )}
         <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
       </div>
+
+      {/* Leave without signing out confirmation card */}
+      <Dialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Leave without signing out?</DialogTitle>
+            <DialogDescription>
+              You are currently logged in. Are you sure you want to leave this page?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleLeaveCancel}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleLeaveConfirm}>
+              Leave
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
