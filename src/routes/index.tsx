@@ -43,7 +43,8 @@ function Index() {
               Sign in
             </Link>
             <Link
-              to="/auth?mode=signup"
+              to="/auth"
+              search={{ mode: "signup" }}
               className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Create account
@@ -72,7 +73,8 @@ function Index() {
               Sign in to your workspace
             </Link>
             <Link
-              to="/auth?mode=signup"
+              to="/auth"
+              search={{ mode: "signup" }}
               className="rounded-md border border-input bg-background px-5 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-accent"
             >
               Create an account

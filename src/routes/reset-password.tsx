@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
-
 export const Route = createFileRoute("/reset-password")({
   validateSearch: (search: Record<string, unknown>) => ({
     email: typeof search["email"] === "string" ? (search["email"] as string) : undefined,
@@ -39,7 +38,11 @@ function ResetPasswordPage() {
   const email = search.email || "";
 
   const resetPasswordMutation = useMutation({
-    mutationFn: async (values: { otp: string; password: string; confirmPassword: string }) => {
+    mutationFn: async (values: {
+      otp: string;
+      password: string;
+      confirmPassword: string;
+    }) => {
       return api<{ message: string }>("/auth/reset-password", {
         method: "POST",
         body: JSON.stringify(values),
@@ -67,6 +70,7 @@ function ResetPasswordPage() {
       setFieldErrors({ otp: "All fields are required" });
       return;
     }
+    
 
     if (otp.length !== 6 || !/^\d+$/.test(otp)) {
       setFieldErrors({ otp: "OTP must be a 6-digit code" });

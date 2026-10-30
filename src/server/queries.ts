@@ -7,6 +7,7 @@ export type ProfileSummary = {
   full_name: string;
   email: string;
   created_at: string;
+  is_active: boolean;
 };
 
 export type CurrentUser = {
@@ -28,7 +29,7 @@ export const getMyProfile = createServerFn({ method: "POST" })
     const [profileResult, rolesResult] = await Promise.all([
       supabase
         .from("profiles")
-        .select("id, full_name, email, created_at")
+        .select("id, full_name, email, created_at, is_active")
         .eq("id", userId)
         .maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
@@ -70,14 +71,14 @@ export const getAdminOverview = createServerFn({ method: "POST" })
   .handler(async ({ context }): Promise<AdminOverview> => {
     const { supabase, userId } = context;
 
-    const { data: isAdmin, error: roleError } = await supabase.rpc("has_role", {
+    const { data: isAdminRole, error: roleError } = await supabase.rpc("has_role", {
       _user_id: userId,
       _role: "admin",
     });
     if (roleError) {
       throw new Error("Could not verify your role");
     }
-    if (!isAdmin) {
+    if (!isAdminRole) {
       throw new Error("Forbidden: administrator privileges required");
     }
 
@@ -86,7 +87,7 @@ export const getAdminOverview = createServerFn({ method: "POST" })
     const [profiles, roles, setup] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id, full_name, email, created_at")
+        .select("id, full_name, email, created_at, is_active")
         .order("created_at", { ascending: true }),
       supabaseAdmin.from("user_roles").select("user_id, role"),
       supabaseAdmin

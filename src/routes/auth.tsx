@@ -23,7 +23,7 @@ import {
 type Mode = "signin" | "forgot";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { mode?: Mode } => ({
     mode:
       typeof search["mode"] === "string" && ["signin", "forgot"].includes(search["mode"])
         ? (search["mode"] as Mode)
@@ -279,6 +279,7 @@ function SignInForm({
   );
 }
 
+
 function ForgotPasswordForm({
   busy,
   onSubmit,
@@ -297,11 +298,13 @@ function ForgotPasswordForm({
       className="mt-6 space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
-        const parsed = forgotPasswordSchema.safeParse({ email });
+                const parsed = forgotPasswordSchema.safeParse({ email });
+
         if (!parsed.success) {
           onValidationError(parsed.error.issues[0]?.message ?? null);
           return;
         }
+
         onValidationError(null);
         onSubmit(parsed.data);
       }}
