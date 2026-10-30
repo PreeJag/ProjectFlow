@@ -8,6 +8,13 @@
       "when": 1793291038912,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793341369474,
+      "tag": "0001_projects_members_tasks_rbac",
+      "breakpoints": true
     }
   ]
 }
