@@ -5,23 +5,27 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { api, setToken } from "@/lib/api";
 import {
   forgotPasswordSchema,
   signInSchema,
-  signUpSchema,
   type ForgotPasswordValues,
   type SignInValues,
-  type SignUpValues,
 } from "@/lib/auth-validation";
 
-type Mode = "signin" | "signup" | "forgot";
+type Mode = "signin" | "forgot";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     mode:
-      typeof search["mode"] === "string" &&
-      ["signin", "signup", "forgot"].includes(search["mode"])
+      typeof search["mode"] === "string" && ["signin", "forgot"].includes(search["mode"])
         ? (search["mode"] as Mode)
         : undefined,
   }),
@@ -50,73 +54,56 @@ function AuthPage() {
   const [mode, setMode] = useState<Mode>(search.mode ?? "signin");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [signupNotice, setSignupNotice] = useState<string | null>(null);
 
   async function handleSignIn(values: SignInValues) {
     setBusy(true);
     setError(null);
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-    });
-    setBusy(false);
-    if (authError) {
-      if (authError.message === "Email not confirmed") {
-        setError("Please confirm your email address first — check your inbox for the confirmation link.");
-      } else {
-        setError("Invalid email or password. Please try again.");
-      }
-      return;
-    }
-    toast.success("Signed in");
-    navigate({ to: "/dashboard" });
-  }
 
-  async function handleSignUp(values: SignUpValues) {
-    setBusy(true);
-    setError(null);
-    const { data, error: authError } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
-      options: {
-        data: { full_name: values.fullName },
-        emailRedirectTo: window.location.origin,
-      },
-    });
-    setBusy(false);
-    if (authError) {
-      if (authError.message.toLowerCase().includes("already registered")) {
-        setError("This email is already registered. Try signing in instead.");
-      } else {
-        setError("Registration failed. Please try again.");
+    try {
+      const data = await api<{ token: string; user: any }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: values.email, password: values.password }),
+      });
+
+      // Ensure the role selected matches the account's actual stored role
+      if (data.user.role !== values.role) {
+        setError("This account is not registered with the selected role.");
+        setBusy(false);
+        return;
       }
-      return;
-    }
-    if (data.session) {
-      toast.success("Account created");
+
+      setToken(data.token);
+      if (data.user.mustChangePassword) {
+        toast.info("Please change your password before continuing");
+        navigate({ to: "/change-password", replace: true });
+        return;
+      }
+      toast.success("Signed in");
       navigate({ to: "/dashboard" });
-      return;
+    } catch (err: any) {
+      setError(err.body?.error || "Invalid email or password. Please try again.");
+    } finally {
+      setBusy(false);
     }
-    // Email confirmation is enabled: the account exists but is not signed in yet.
-    setSignupNotice(
-      "Account created. Check your inbox and click the confirmation link, then sign in.",
-    );
   }
 
   async function handleForgot(values: ForgotPasswordValues) {
     setBusy(true);
     setError(null);
-    const { error: authError } = await supabase.auth.resetPasswordForEmail(values.email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setBusy(false);
-    if (authError) {
-      setError("Could not send the reset email. Please try again.");
-      return;
+    try {
+      await api("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: values.email }),
+      });
+      toast.success("OTP sent", {
+        description: "Check your email for the OTP code.",
+      });
+      navigate({ to: "/reset-password", replace: true, search: { email: values.email } });
+    } catch (err: any) {
+      setError(err.body?.error || "Could not send the OTP. Please try again.");
+    } finally {
+      setBusy(false);
     }
-    toast.success("Password reset email sent", {
-      description: "Check your inbox for the reset link.",
-    });
   }
 
   return (
@@ -135,32 +122,7 @@ function AuthPage() {
       <main className="flex flex-1 items-start justify-center px-4 py-10">
         <div className="w-full max-w-md">
           <div className="rounded-xl border bg-card p-6 shadow-sm">
-            {mode !== "signup" && (
-              <button
-                type="button"
-                onClick={() => setMode("signup")}
-                className="mb-6 text-xs text-muted-foreground transition-colors hover:text-primary"
-              >
-                Need an account? Create one — all new accounts get standard user
-                access.
-              </button>
-            )}
-
-            {signupNotice ? (
-              <div className="text-center">
-                <h1 className="text-xl font-semibold">Confirm your email</h1>
-                <p className="mt-3 text-sm text-muted-foreground">{signupNotice}</p>
-                <Button
-                  className="mt-6 w-full"
-                  onClick={() => {
-                    setSignupNotice(null);
-                    setMode("signin");
-                  }}
-                >
-                  Back to sign in
-                </Button>
-              </div>
-            ) : mode === "signin" ? (
+            {mode === "signin" ? (
               <>
                 <h1 className="text-xl font-semibold">Sign in</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -177,36 +139,6 @@ function AuthPage() {
                     }}
                   >
                     Forgot password?
-                  </button>
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-primary"
-                    onClick={() => {
-                      setMode("signup");
-                      setError(null);
-                    }}
-                  >
-                    Create account
-                  </button>
-                </div>
-              </>
-            ) : mode === "signup" ? (
-              <>
-                <h1 className="text-xl font-semibold">Create your account</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  New accounts receive standard user privileges.
-                </p>
-                <SignUpForm busy={busy} onSubmit={handleSignUp} error={error} />
-                <div className="mt-4 text-right text-xs">
-                  <button
-                    type="button"
-                    className="text-muted-foreground hover:text-primary"
-                    onClick={() => {
-                      setMode("signin");
-                      setError(null);
-                    }}
-                  >
-                    Already registered? Sign in
                   </button>
                 </div>
               </>
@@ -263,22 +195,59 @@ function SignInForm({
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Partial<Record<"email" | "password", string>>>({});
+  const [role, setRole] = useState<"admin" | "project_manager" | "team_member">("team_member");
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<"email" | "password" | "role", string>>
+  >({});
+
+  // Check if email is the admin email
+  const isAdminEmail = email === "preethikajagadisan@gmail.com";
+
+  // Auto-select admin role for admin email
+  if (isAdminEmail && role !== "admin") {
+    setRole("admin");
+  }
 
   return (
     <form
       className="mt-6 space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
-        const parsed = signInSchema.safeParse({ email, password });
+        const parsed = signInSchema.safeParse({ email, password, role });
         if (!parsed.success) {
-          setFieldErrors(Object.fromEntries(parsed.error.issues.map((i) => [i.path[0], i.message])));
+          setFieldErrors(
+            Object.fromEntries(parsed.error.issues.map((i) => [i.path[0], i.message])),
+          );
           return;
         }
         setFieldErrors({});
         onSubmit(parsed.data);
       }}
     >
+      <div>
+        <Label htmlFor="signin-role">Sign in as</Label>
+        <Select value={role} onValueChange={(value: any) => setRole(value)} disabled={isAdminEmail}>
+          <SelectTrigger id="signin-role">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {isAdminEmail ? (
+              <SelectItem value="admin">Admin</SelectItem>
+            ) : (
+              <>
+                <SelectItem value="project_manager">Project Manager</SelectItem>
+                <SelectItem value="team_member">Team Member</SelectItem>
+              </>
+            )}
+          </SelectContent>
+        </Select>
+        {isAdminEmail && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Admin access is restricted to this account
+          </p>
+        )}
+        <FieldError message={fieldErrors["role"] ?? null} />
+      </div>
       <div>
         <Label htmlFor="signin-email">Email</Label>
         <Input
@@ -310,88 +279,6 @@ function SignInForm({
   );
 }
 
-function SignUpForm({
-  busy,
-  onSubmit,
-  error,
-}: {
-  busy: boolean;
-  onSubmit: (values: SignUpValues) => void;
-  error: string | null;
-}) {
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  return (
-    <form
-      className="mt-6 space-y-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const parsed = signUpSchema.safeParse({ fullName, email, password, confirmPassword });
-        if (!parsed.success) {
-          setFieldErrors(Object.fromEntries(parsed.error.issues.map((i) => [i.path[0], i.message])));
-          return;
-        }
-        setFieldErrors({});
-        onSubmit(parsed.data);
-      }}
-    >
-      <div>
-        <Label htmlFor="signup-name">Full name</Label>
-        <Input
-          id="signup-name"
-          autoComplete="name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          placeholder="Jane Doe"
-        />
-        <FieldError message={fieldErrors.fullName ?? null} />
-      </div>
-      <div>
-        <Label htmlFor="signup-email">Email</Label>
-        <Input
-          id="signup-email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-        />
-        <FieldError message={fieldErrors.email ?? null} />
-      </div>
-      <div>
-        <Label htmlFor="signup-password">Password</Label>
-        <Input
-          id="signup-password"
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <FieldError message={fieldErrors.password ?? null} />
-      </div>
-      <div>
-        <Label htmlFor="signup-confirm">Confirm password</Label>
-        <Input
-          id="signup-confirm"
-          type="password"
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
-        <FieldError message={fieldErrors.confirmPassword ?? null} />
-      </div>
-      <FieldError message={error} />
-      <Button type="submit" className="w-full" disabled={busy}>
-        {busy ? "Creating account…" : "Create account"}
-      </Button>
-    </form>
-  );
-}
-
 function ForgotPasswordForm({
   busy,
   onSubmit,
@@ -412,7 +299,7 @@ function ForgotPasswordForm({
         event.preventDefault();
         const parsed = forgotPasswordSchema.safeParse({ email });
         if (!parsed.success) {
-          onValidationError(parsed.error.issues[0].message);
+          onValidationError(parsed.error.issues[0]?.message ?? null);
           return;
         }
         onValidationError(null);

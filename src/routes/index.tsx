@@ -58,12 +58,11 @@ function Index() {
             Team project tracking
           </span>
           <h1 className="mt-6 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
-            Plan projects. Track tasks.{" "}
-            <span className="text-primary">Ship together.</span>
+            Plan projects. Track tasks. <span className="text-primary">Ship together.</span>
           </h1>
           <p className="mt-4 text-base text-muted-foreground">
-            A clean, Jira-inspired workspace for projects, tasks and team
-            members — with secure, role-based access control built in.
+            A clean, Jira-inspired workspace for projects, tasks and team members — with secure,
+            role-based access control built in.
           </p>
           <div className="mt-8 flex items-center justify-center gap-3">
             <Link
@@ -84,9 +83,8 @@ function Index() {
 
       <footer className="border-t bg-card py-6">
         <p className="text-center text-xs text-muted-foreground">
-          ProjectFlow — every account starts with standard user privileges.
-          Administrator access is provisioned only through a secure, one-time
-          setup procedure.
+          ProjectFlow — every account starts with standard user privileges. Administrator access is
+          provisioned only through a secure, one-time setup procedure.
         </p>
       </footer>
     </div>

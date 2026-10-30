@@ -131,26 +131,6 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
 
-  // Keep router and query cache in sync with identity changes only.
-  // Dynamic import keeps the browser-only Supabase client out of SSR.
-  useEffect(() => {
-    let subscription: { unsubscribe: () => void } | undefined;
-    let cancelled = false;
-    import("@/integrations/supabase/client").then(({ supabase }) => {
-      if (cancelled) return;
-      const { data } = supabase.auth.onAuthStateChange((event) => {
-        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-        router.invalidate();
-        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
-      });
-      subscription = data.subscription;
-    });
-    return () => {
-      cancelled = true;
-      subscription?.unsubscribe();
-    };
-  }, [router, queryClient]);
-
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
