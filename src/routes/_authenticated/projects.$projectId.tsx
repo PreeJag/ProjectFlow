@@ -591,27 +591,31 @@ function ProjectDetailPage() {
                           ) : (
                             <span className="text-xs text-muted-foreground">Unassigned</span>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingTaskId(task.id);
-                              setEditTaskDialogOpen(true);
-                            }}
-                          >
-                            <Settings className="size-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteTaskMutation.mutate(task.id);
-                            }}
-                          >
-                            <Trash2 className="size-4 text-destructive" />
-                          </Button>
+                          {role !== "team_member" && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTaskId(task.id);
+                                  setEditTaskDialogOpen(true);
+                                }}
+                              >
+                                <Settings className="size-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteTaskMutation.mutate(task.id);
+                                }}
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -100,7 +100,11 @@ function AuthPage() {
       });
       navigate({ to: "/reset-password", replace: true, search: { email: values.email } });
     } catch (err: any) {
-      setError(err.body?.error || "Could not send the OTP. Please try again.");
+      if (err.status === 404) {
+        setError(err.body?.error || "No account found with this email address");
+      } else {
+        setError(err.body?.error || "Could not send the OTP. Please try again.");
+      }
     } finally {
       setBusy(false);
     }
@@ -279,7 +283,6 @@ function SignInForm({
   );
 }
 
-
 function ForgotPasswordForm({
   busy,
   onSubmit,
@@ -298,7 +301,7 @@ function ForgotPasswordForm({
       className="mt-6 space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
-                const parsed = forgotPasswordSchema.safeParse({ email });
+        const parsed = forgotPasswordSchema.safeParse({ email });
 
         if (!parsed.success) {
           onValidationError(parsed.error.issues[0]?.message ?? null);
