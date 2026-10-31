@@ -347,10 +347,10 @@ export const forgotPassword = async (req, res, next) => {
 
     const { user, role } = await findUserByEmail(email);
     if (!user) {
-      // Don't reveal whether email exists
-      return res.json({
-        success: true,
-        message: "If an account exists with this email, an OTP has been sent",
+      // Return error for non-existent email
+      return res.status(404).json({
+        success: false,
+        error: "No account found with this email address",
       });
     }
 
@@ -358,24 +358,31 @@ export const forgotPassword = async (req, res, next) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const resetPasswordExpires = Date.now() + 600000; // 10 minutes
 
-    user.resetPasswordToken = otp;
-    user.resetPasswordExpires = resetPasswordExpires;
-    await user.save();
+    // Use findOneAndUpdate to avoid validating the whole document
+    const Model = MODEL_BY_ROLE[role];
+    await Model.findByIdAndUpdate(
+      user._id,
+      {
+        resetPasswordToken: otp,
+        resetPasswordExpires: resetPasswordExpires,
+      },
+      { new: true },
+    );
 
     // Send email with OTP
     try {
       const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "localhost",
-        port: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 1025,
-        secure: process.env.SMTP_SECURE === "true",
-        auth:
-          process.env.SMTP_USER && process.env.SMTP_PASS
-            ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-            : undefined,
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
       });
 
       await transporter.sendMail({
-        from: process.env.SMTP_FROM || "noreply@projectflow.local",
+        from: process.env.EMAIL_USER,
         to: user.email,
         subject: "ProjectFlow - Password Reset OTP",
         html: `
@@ -387,7 +394,7 @@ export const forgotPassword = async (req, res, next) => {
       });
     } catch (mailError) {
       console.error("Email send failed:", mailError.message);
-      // In development, log the OTP so it can be used directly
+      // Fallback: log OTP to console so it can be used directly
       console.log("OTP (dev):", otp, "for", user.email);
     }
 
@@ -396,7 +403,11 @@ export const forgotPassword = async (req, res, next) => {
       message: "If an account exists with this email, an OTP has been sent",
     });
   } catch (error) {
-    next(error);
+    console.error("Forgot password error:", error.message);
+    return res.status(500).json({
+      success: false,
+      error: "Forgot password failed. Please try again.",
+    });
   }
 };
 
@@ -452,13 +463,23 @@ export const resetPassword = async (req, res, next) => {
       });
     }
 
-    // Hash new password and clear OTP
+    // Determine which collection the user belongs to
+    const Model = admin ? Admin : projectManager ? ProjectManager : TeamMember;
+
+    // Hash new password and clear OTP using findByIdAndUpdate to avoid
+    // full-document validation on older user records
     const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
-    user.mustChangePassword = false;
-    await user.save();
+    const hashedPassword = await bcrypt.hash(password, salt);
+    await Model.findByIdAndUpdate(
+      user._id,
+      {
+        password: hashedPassword,
+        resetPasswordToken: undefined,
+        resetPasswordExpires: undefined,
+        mustChangePassword: false,
+      },
+      { runValidators: true },
+    );
 
     res.json({
       success: true,
